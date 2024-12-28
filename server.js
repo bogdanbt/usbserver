@@ -8,7 +8,11 @@ const app = express();
 const PORT = 8000;
 
 // Настройка CORS
-app.use(cors());
+// app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:3000', 'https://yourdomain.com']
+}));
+
 
 // Обработка JSON-запросов
 app.use(express.json());
