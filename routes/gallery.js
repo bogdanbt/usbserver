@@ -34,7 +34,8 @@ router.post('/upload', upload.single('image'), (req, res) => {
   }
 
   // Сохраняем данные о файле в базу
-  const filePath = `http://localhost:8000/uploads/${req.file.filename}`;
+  // const filePath = `http://localhost:8000/uploads/${req.file.filename}`;
+  const filePath = req.file.filename;
   const fileName = req.file.originalname;
 
   galleryDb.run(
