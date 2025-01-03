@@ -5,6 +5,7 @@ const sqlite3 = require('sqlite3').verbose();
 const multer = require('multer');
 const path = require('path');
 const router = express.Router();
+const fs = require('fs');
 
 // Подключение базы данных галереи
 const galleryDb = new sqlite3.Database(path.resolve(__dirname, '../database/gallery.db'), (err) => {
@@ -63,4 +64,59 @@ router.get('/', (req, res) => {
   });
 });
 
+
+// Эндпоинт для удаления фото
+router.delete('/:id', (req, res) => {
+  const { id } = req.params;
+
+  // Получаем путь файла из базы данных
+  galleryDb.get('SELECT file_path FROM gallery WHERE id = ?', [id], (err, row) => {
+    if (err) {
+      console.error('Ошибка получения данных о файле:', err);
+      return res.status(500).json({ error: 'Ошибка получения данных о файле' });
+    }
+
+    if (!row) {
+      return res.status(404).json({ error: 'Файл не найден в базе данных' });
+    }
+
+    const filePath = path.join(__dirname, '../uploads', row.file_path);
+
+    // Проверяем, существует ли файл
+    fs.access(filePath, fs.constants.F_OK, (fileErr) => {
+      if (fileErr) {
+        console.warn(`Файл не существует: ${filePath}`);
+
+        // Удаляем только запись из базы данных
+        galleryDb.run('DELETE FROM gallery WHERE id = ?', [id], (dbErr) => {
+          if (dbErr) {
+            console.error('Ошибка удаления записи из базы данных:', dbErr);
+            return res.status(500).json({ error: 'Ошибка удаления записи из базы данных' });
+          }
+
+          res.status(200).json({ message: 'Файл отсутствовал, но запись удалена из базы данных' });
+        });
+        return;
+      }
+
+      // Удаляем файл из папки
+      fs.unlink(filePath, (unlinkErr) => {
+        if (unlinkErr) {
+          console.error('Ошибка удаления файла:', unlinkErr);
+          return res.status(500).json({ error: 'Ошибка удаления файла' });
+        }
+
+        // Удаляем запись о файле из базы данных
+        galleryDb.run('DELETE FROM gallery WHERE id = ?', [id], (dbErr) => {
+          if (dbErr) {
+            console.error('Ошибка удаления записи из базы данных:', dbErr);
+            return res.status(500).json({ error: 'Ошибка удаления записи из базы данных' });
+          }
+
+          res.status(200).json({ message: 'Файл и запись успешно удалены' });
+        });
+      });
+    });
+  });
+});
 module.exports = router;
